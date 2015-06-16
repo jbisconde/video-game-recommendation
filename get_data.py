@@ -27,7 +27,7 @@ def insert_one_to_mongo(review_json):
 
     total_reviews = coll.find().count()
     if total_reviews % 100 == 0:
-        print 'There are %s many pages.' % (total_reviews)
+        print 'There are %d reviews so far.' % total_reviews
 
 def insert_reviews_to_mongo(unirest_json, game_name):
 
@@ -60,12 +60,21 @@ def main():
     db = client.metacritic
     coll = db.reviews
 
+    total_reviews_before = coll.find().count()
     get_top_100_games(coll)
+    total_reviews_after = coll.find().count()
+    total_inserts = total_reviews_after - total_reviews_before
 
     client.close()
+    if total_reviews_before == total_reviews_after:
+        return 'No items were inserted into MongoDB.'
+    else:
+        return 'There were %d items inserted to MongoDB.' % total_inserts
 
 
-
+if __main__ == '__name__':
+    comment = main()
+    print comment
 
 
 
