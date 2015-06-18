@@ -57,8 +57,8 @@ def get_top_100_games(coll):
 
 def get_data_from_mongodb():
     client = MongoClient()
-    db = client.metacritic
-    coll = db.reviews
+    db = client['metacritic']
+    coll = db['reviews']
 
     games_coll = list(coll.find())
     games_df = pd.DataFrame(games_coll)
@@ -67,14 +67,13 @@ def get_data_from_mongodb():
     print 'There are %d reviews from MongoDB.' % len(games_df)
     return games_df
 
-def main():
-    # use metacritic
-    # db.createCollection("reviews")
+def insert_top_100_games_to_mongodb():
     client = MongoClient()
-    db = client.metacritic
-    coll = db.reviews
+    db = client['metacritic']
+    coll = db['reviews']
 
     total_reviews_before = coll.find().count()
+    # Insert the top 100 games from metacritic
     get_top_100_games(coll)
     total_reviews_after = coll.find().count()
     total_inserts = total_reviews_after - total_reviews_before
@@ -87,7 +86,7 @@ def main():
 
 
 if __name__ == '__main__':
-    comment = main()
+    comment = insert_top_100_games_to_mongodb()
     print comment
 
 
