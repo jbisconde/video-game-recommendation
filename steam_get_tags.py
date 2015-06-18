@@ -1,42 +1,33 @@
 import requests
+from requests.exceptions import ConnectionError
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
 from pymongo.errors import DuplicateKeyError
 import time
-from selenium import webdriver
-from helper import selector, load_jquery, scroll_to_bottom, get_outerhtml, alert
-import os
 
 # http://www.codedisqus.com/0SyWkjUjUP/c-wpf-steam-website-age-verification-skip.html
 # 'http://store.steampowered.com/search/results?sort_by=_ASC&page=486&snr=1_7_7_230_7'
 # export PATH=$PATH:Google\ Chrome.app
 # https://steamdb.info/
-def start_driver(base_url):
-   path = os.path.join(os.getcwd(), 'chromedriver')
-   options = webdriver.ChromeOptions()
-   options.add_argument("--start-maximized")
-   driver = webdriver.Chrome(executable_path=path, chrome_options=options)
-   driver.get(base_url)
-   load_jquery(driver)
 
 def get_data_from_game(game_url):
-    content = requests.get(game_url).text
-    time.sleep(2)
+    try:
+        content = requests.get(game_url).text
+    except ConnectionError:
+        pass
+
     soup = BeautifulSoup(content, 'html5lib')
 
     # mytags = soup.select('''a[href*="tag/en"]''')
     # tags = set([tag.text.strip() for tag in mytags])
-    try:
-        desc = " ".join([line.text.strip() for line in soup.select('div.game_area_description')])
+    desc = " ".join([line.text.strip() for line in soup.select('div.game_area_description')])
 
-    except:
+    if not desc:
         url_split = game_url.split('app')
         game_url_2 = 'agecheck/app'.join(url_split)
 
         soup = send_post_request(game_url, game_url_2)
         desc = " ".join([line.text.strip() for line in soup.select('div.game_area_description')])
-        pass
-
 
     mytags = soup.select('a.app_tag') 
     tags = [tag.text.strip().lower() for tag in mytags]
@@ -53,13 +44,11 @@ def send_post_request(game_url, game_url_2):
     session = requests.session()
     r = session.post(game_url_2, data=payload)
     content = session.get(game_url).text
-    time.sleep(1)
     # content = r.content
     soup = BeautifulSoup(content, 'html.parser')
     r.close()
     session.close()
     return soup
-
 
 def main_data():
     client = MongoClient()
@@ -67,7 +56,7 @@ def main_data():
     coll = db['steam_games2']
     steam_data = list(coll.find())
     for game in steam_data:
-        if 'game_desc' not in game.keys():
+        if ('game_desc' not in game.keys()) or (not game['game_desc']):
             game_url = str(game['game_link']).split('?')[0]
             game_desc, game_tags = get_data_from_game(game_url)
             game['game_desc'] = game_desc
