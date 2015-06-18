@@ -18,7 +18,7 @@ def get_game_reviews(game_name):
     )
     return response
 
-def insert_one_to_mongo(review_json):
+def insert_one_to_mongo(coll, review_json):
     try:
         coll.insert(review_json, 
             continue_on_error=True)
@@ -29,15 +29,15 @@ def insert_one_to_mongo(review_json):
     if total_reviews % 100 == 0:
         print 'There are %d reviews so far.' % total_reviews
 
-def insert_reviews_to_mongo(unirest_json, game_name):
+def insert_reviews_to_mongo(coll, unirest_json, game_name):
 
     reviews = unirest_json.body['result']
     
     for review in reviews:
         review['game_name'] = game_name
-        insert_one_to_mongo(review)
+        insert_one_to_mongo(coll, review)
 
-def get_top_100_games(mongodb_collection):
+def get_top_100_games(coll):
     metacritic_url = "http://www.metacritic.com/browse/games/score/metascore/all/pc"
 
     content = requests.get(metacritic_url).content
@@ -53,7 +53,7 @@ def get_top_100_games(mongodb_collection):
         response = get_game_reviews(game_name)
 
         # Insert the reviews to MongoDB
-        insert_reviews_to_mongo(response, game_name)
+        insert_reviews_to_mongo(coll, response, game_name)
 
 def get_data_from_mongodb():
     client = MongoClient()
