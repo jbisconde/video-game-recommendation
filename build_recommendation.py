@@ -1,20 +1,28 @@
+import pyspark as ps
+from pyspark.mllib.recommendation import ALS, MatrixFactorizationModel, Rating
 from get_data import get_data_from_mongodb
 import numpy as np
 import pandas as pd
 from scipy import sparse
-from sklearn.decomposition import NMF
-from SVD import MatrixFactorizationRecommender
+import cPickle as pickle
 
-def get_ratings_contents():
+def get_ratings_contents(save_pickle=False):
     games_df = get_data_from_mongodb()
     game_names = pd.factorize(games_df.game_name)
     critics = pd.factorize(games_df.critic)
 
-    ratings_contents = games_df[ ['score'] ].astype(int)
+    if save_pickle:
+        with open('data/critics.pkl', 'wb') as f_critic:
+            pickle.dump(critics, f_critic)
+
+        with open('data/game_names.pkl', 'wb') as f_games:
+            pickle.dump(game_names, f_games)
+
+    ratings_contents = games_df[ ['score'] ].astype(float)
     ratings_contents.loc[:, 'game'] = pd.Series(game_names[0])
     ratings_contents.loc[:, 'user'] = pd.Series(critics[0])
 
-    return ratings_contents
+    return ratings_contents[ ['user', 'game', 'score'] ]
 
 def get_ratings_data(ratings_contents):
     total_users = len(ratings_contents.user.unique())
@@ -26,35 +34,49 @@ def get_ratings_data(ratings_contents):
 
     return ratings_mat
 
-def validation(recommender, ratings_mat, pct_users_to_val=0.82, pct_items_to_val=0.82):
-    n_users = ratings_mat.shape[0]
-    n_items = ratings_mat.shape[1]
-    n_users_in_val = int(n_users * pct_users_to_val)
-    n_items_in_val = int(n_items * pct_items_to_val)
-    val_data = ratings_mat[:n_users_in_val, :n_items_in_val].copy()
-    train_data = ratings_mat.copy()
-    train_data[:n_users_in_val, :n_items_in_val] = 0
-    recommender.fit(train_data)
+def ratings_to_file():
+    ratings = get_ratings_contents()
+    ratings_text = ratings.to_csv(header=False, index=False)
+    with open('data/ratings.txt', 'wb') as f:
+        f.write(ratings_text)
 
-    # Printing MSE (With Avg)
-    preds = recommender.pred_all_users()
-    val_preds = preds[:n_users_in_val, :n_items_in_val]
-    print (mse_sparse_with_dense(val_data, val_preds))
+def create_spark_ratings():
+    sc = ps.SparkContext('local[4]')
 
-def mse_sparse_with_dense(sparse_mat, dense_mat):
-    """
-    Computes mean-squared-error between a sparse and a dense matrix.  Does not include the 0's from
-    the sparse matrix in computation (treats them as missing)
-    """
-    # get mask of non-zero, mean-square of those, divide by count of those
-    nonzero_idx = sparse_mat.nonzero()
-    mse = (np.array(sparse_mat[nonzero_idx] - dense_mat[nonzero_idx]) ** 2).mean()
-    return mse
+    # Load and parse the data
+    data = sc.textFile('data/ratings.txt')
+    data.first()
 
-def validate_recommendation_model():
-    ratings_contents = get_ratings_contents()
+    data_sep = data.map(lambda l: l.split(','))
+    data_sep.first()
 
-    ratings_mat = get_ratings_data(ratings_contents)
+    ratings = data_sep.map(lambda l: Rating(int(l[0]), int(l[1]), float(l[2])))
+    ratings.first()
 
-    my_mf_rec_engine = MatrixFactorizationRecommender()
-    validation(my_mf_rec_engine, ratings_mat)
+    return ratings
+
+def build_ALS_model(ratings):
+    # Build the recommendation model using Alternating Least Squares
+    rank = 10
+    numIterations = 20
+    model = ALS.train(ratings, rank, numIterations)
+
+    return model
+
+def evaluate_train_data(model, ratings):
+
+    # Evaluate the model on training data
+    testdata = ratings.map(lambda p: (p[0], p[1]))
+    testdata.first()
+
+    predictions = model.predictAll(testdata).map(lambda r: ((r[0], r[1]), r[2]))
+    predictions.first()
+
+    ratesAndPreds = ratings.map(lambda r: ((r[0], r[1]), r[2])).join(predictions)
+    ratesAndPreds.first()
+
+    MSE = ratesAndPreds.map(lambda r: (r[1][0] - r[1][1]) ** 2).mean()
+    print("Mean Squared Error = " + str(MSE))
+
+
+

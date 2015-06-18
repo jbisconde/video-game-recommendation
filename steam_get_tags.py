@@ -9,14 +9,16 @@ import time
 # 'http://store.steampowered.com/search/results?sort_by=_ASC&page=486&snr=1_7_7_230_7'
 # export PATH=$PATH:Google\ Chrome.app
 # https://steamdb.info/
+# http://blog.yhathq.com/posts/recommender-system-in-r.html
 
 def get_data_from_game(game_url):
     try:
         content = requests.get(game_url).text
+        time.sleep(1)
     except ConnectionError:
-        pass
+        return '', ''
 
-    soup = BeautifulSoup(content, 'html5lib')
+    soup = BeautifulSoup(content, 'html.parser')
 
     # mytags = soup.select('''a[href*="tag/en"]''')
     # tags = set([tag.text.strip() for tag in mytags])
