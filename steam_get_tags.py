@@ -10,6 +10,7 @@ import os
 # http://www.codedisqus.com/0SyWkjUjUP/c-wpf-steam-website-age-verification-skip.html
 # 'http://store.steampowered.com/search/results?sort_by=_ASC&page=486&snr=1_7_7_230_7'
 # export PATH=$PATH:Google\ Chrome.app
+# https://steamdb.info/
 def start_driver(base_url):
    path = os.path.join(os.getcwd(), 'chromedriver')
    options = webdriver.ChromeOptions()
@@ -26,14 +27,14 @@ def get_data_from_game(game_url):
     # mytags = soup.select('''a[href*="tag/en"]''')
     # tags = set([tag.text.strip() for tag in mytags])
     try:
-        desc = soup.select('div.game_area_description')[0].text.strip()
-        
+        desc = " ".join([line.text.strip() for line in soup.select('div.game_area_description')])
+
     except:
         url_split = game_url.split('app')
-        game_url = 'agecheck/app'.join(url_split).split('?')[0]
+        game_url_2 = 'agecheck/app'.join(url_split)
 
-        soup = send_post_request(game_url)
-        desc = soup.select('div.game_area_description')[1].text.strip()
+        soup = send_post_request(game_url, game_url_2)
+        desc = " ".join([line.text.strip() for line in soup.select('div.game_area_description')])
         pass
 
 
@@ -42,7 +43,7 @@ def get_data_from_game(game_url):
 
     return desc, tags
 
-def send_post_request(game_url):
+def send_post_request(game_url, game_url_2):
     payload = {
         'ageDay': '1',
         'ageMonth': 'January',
@@ -50,10 +51,11 @@ def send_post_request(game_url):
     }
 
     session = requests.session()
-    r = requests.post(game_url, data=payload)
+    r = session.post(game_url_2, data=payload)
+    content = session.get(game_url).text
     time.sleep(1)
-    content = r.content
-    soup = BeautifulSoup(content, 'lxml')
+    # content = r.content
+    soup = BeautifulSoup(content, 'html.parser')
     r.close()
     session.close()
     return soup
@@ -65,13 +67,14 @@ def main_data():
     coll = db['steam_games2']
     steam_data = list(coll.find())
     for game in steam_data:
-        game_url = game['game_link']
-        game_desc, game_tags = get_data_from_game(game_url)
-        game['game_desc'] = game_desc
-        game['game_tags'] = game_tags
-        mongo_id = game['_id']
-        coll.update({'_id':mongo_id}, {"$set": game}, upsert=False)
-        print mongo_id
+        if 'game_desc' not in game.keys():
+            game_url = str(game['game_link']).split('?')[0]
+            game_desc, game_tags = get_data_from_game(game_url)
+            game['game_desc'] = game_desc
+            game['game_tags'] = game_tags
+            mongo_id = game['_id']
+            coll.update({'_id':mongo_id}, {"$set": game}, upsert=False)
+            print mongo_id
     # client.close()
 
 def get_all_game_urls(collection):
