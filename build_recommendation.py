@@ -6,6 +6,8 @@ import pandas as pd
 from scipy import sparse
 import cPickle as pickle
 
+# https://databricks-training.s3.amazonaws.com/movie-recommendation-with-mllib.html
+
 def get_ratings_contents(save_pickle=False):
     games_df = get_data_from_mongodb()
     game_names = pd.factorize(games_df.game_name)
@@ -35,6 +37,7 @@ def get_ratings_data(ratings_contents):
     return ratings_mat
 
 def ratings_to_file():
+
     ratings = get_ratings_contents()
     ratings_text = ratings.to_csv(header=False, index=False)
     with open('data/ratings.txt', 'wb') as f:

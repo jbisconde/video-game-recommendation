@@ -25,8 +25,12 @@ def get_data_from_game(game_url):
     desc = " ".join([line.text.strip() for line in soup.select('div.game_area_description')])
 
     if not desc:
-        url_split = game_url.split('app')
-        game_url_2 = 'agecheck/app'.join(url_split)
+        if 'app' in game_url:
+            url_split = game_url.split('app')
+            game_url_2 = 'agecheck/app'.join(url_split)
+        elif 'sub' in game_url:
+            url_split = game_url.split('sub')
+            game_url_2 = 'agecheck/sub'.join(url_split)
 
         soup = send_post_request(game_url, game_url_2)
         desc = " ".join([line.text.strip() for line in soup.select('div.game_area_description')])
@@ -58,7 +62,7 @@ def main_data():
     coll = db['steam_games2']
     steam_data = list(coll.find())
     for game in steam_data:
-        if ('game_desc' not in game.keys()) or (not game['game_desc']):
+        if ('game_desc' not in game.keys()):# or (not game['game_tags']):
             game_url = str(game['game_link']).split('?')[0]
             game_desc, game_tags = get_data_from_game(game_url)
             game['game_desc'] = game_desc
