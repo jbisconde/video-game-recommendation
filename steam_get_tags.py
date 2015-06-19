@@ -13,8 +13,8 @@ import time
 
 def get_data_from_game(game_url):
     try:
-        content = requests.get(game_url).text
-        time.sleep(1)
+        content = requests.get(game_url, timeout=5).text
+        # time.sleep(4)
     except ConnectionError:
         return '', ''
 
@@ -64,12 +64,16 @@ def main_data():
     for game in steam_data:
         if ('game_desc' not in game.keys()):# or (not game['game_tags']):
             game_url = str(game['game_link']).split('?')[0]
+            mongo_id = game['_id']
+            print mongo_id
+            if mongo_id == 'game_id:Overlord II Demo373': 
+                continue
+
             game_desc, game_tags = get_data_from_game(game_url)
             game['game_desc'] = game_desc
             game['game_tags'] = game_tags
-            mongo_id = game['_id']
             coll.update({'_id':mongo_id}, {"$set": game}, upsert=False)
-            print mongo_id
+            
     # client.close()
 
 def get_all_game_urls(collection):
@@ -81,7 +85,7 @@ def get_all_game_urls(collection):
         page_url = None
         page_url = base_url + str(i) + add_url
         content = requests.get(page_url).text
-        time.sleep(2)
+        # time.sleep(2)
         soup = BeautifulSoup(content, 'html5lib')
         results = soup.select('a.search_result_row.ds_collapse_flag')
 
