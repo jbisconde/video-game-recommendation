@@ -110,15 +110,17 @@
 
                 <div class="row">
                     {% for game in DATA %}
+                        {% set img_url = "http://cdn.akamai.steamstatic.com/steam/apps/" + game['game_link'].split('/')[4] + "/header.jpg" %}
+                        {% set game_url = game['game_link'] %}
                         <div class="col-sm-4 col-lg-4 col-md-4">
                             <div class="thumbnail">
-                                <img src="http://cdn.akamai.steamstatic.com/steam/apps/{{ game['game_link'].split('/')[4] }}/header.jpg" alt="">
+                                <a href={{ game_url }}><img src={{ img_url }} alt=""></a>
                                 <!-- "http://placehold.it/320x150" -->
                                 <div class="caption">
-                                    <h4 class="pull-right">{{ game['game_price'].split('$')[1] }}</h4>
-                                    <h4><a href={{ game['game_link'] }}>{{ game['game_name'] }}</a>
+                                    <h4 class="pull-right">{{ game['game_price'].split('$')[2] }}</h4>
+                                    <h4><a href={{ game_url }}>{{ game['game_name'] }}</a>
                                     </h4>
-                                    <p>{{ ', '.join(game['game_tags']) }}</p>
+                                    <p>{{ ', '.join(game['game_tags']).title() }}</p>
                                 </div>
                                 <div class="ratings">
                                     <p class="pull-right">15 reviews</p>

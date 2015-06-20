@@ -13,12 +13,12 @@ def get_ratings_contents(save_pickle=False):
     game_names = pd.factorize(games_df.game_name)
     critics = pd.factorize(games_df.critic)
 
-    if save_pickle:
-        with open('data/critics.pkl', 'wb') as f_critic:
-            pickle.dump(critics, f_critic)
+    # if save_pickle:
+    #     with open('data/critics.pkl', 'wb') as f_critic:
+    #         pickle.dump(critics, f_critic)
 
         with open('data/game_names.pkl', 'wb') as f_games:
-            pickle.dump(game_names, f_games)
+            pickle.dump(game_names[1], f_games)
 
     ratings_contents = games_df[ ['score'] ].astype(float)
     ratings_contents.loc[:, 'game'] = pd.Series(game_names[0])
@@ -80,6 +80,31 @@ def evaluate_train_data(model, ratings):
 
     MSE = ratesAndPreds.map(lambda r: (r[1][0] - r[1][1]) ** 2).mean()
     print("Mean Squared Error = " + str(MSE))
+
+    return ratesAndPreds
+
+def create_predictions():
+    ratings = create_spark_ratings()
+    model = build_ALS_model(ratings)
+    predictions = evaluate_train_data(model, ratings).collect()
+    return predictions
+
+def predictions_to_file(predictions):
+    with open('data/predictions.csv', 'wb') as f:
+        for line in predictions:
+            label, rating = line
+            user, item = label
+            act_rating, pred_rating = rating
+            f.write(",".join(map(str, [user, item, act_rating, pred_rating])) + '\n')
+
+def one_prediction(model, user=None, n=6):
+    if user is None:
+        ratings = get_ratings_contents()
+        avg_ratings = ratings.groupby('game').mean()['score']
+        top_games = avg_ratings.argsort()[: -(n + 1): -1]
+    predictions = model.recommendProducts(user, n)
+    top_games = [line[1] for line in predictions]
+    return top_games
 
 
 
