@@ -90,10 +90,10 @@
                             </ol>
                             <div class="carousel-inner">
                                 <div class="item active">
-                                    <img class="slide-image" src="http://www.ordoh.com/wp-content/uploads/2014/12/Games-pt1.jpg" alt="">
+                                    <img class="slide-image" src="http://www.ordoh.com/wp-content/uploads/2014/12/Games-pt1.jpg" height=300px alt="">
                                 </div>
                                 <div class="item">
-                                    <img class="slide-image" src="http://www.depthcore.com/img/artwork/echoes/4938_video_games.jpg" alt="">
+                                    <img class="slide-image" src="http://www.depthcore.com/img/artwork/echoes/4938_video_games.jpg" height=300px alt="">
                                     <!-- http://placehold.it/800x300 -->
                                 </div>
                             </div>
@@ -110,26 +110,25 @@
 
                 <div class="row">
                     {% for game in DATA %}
-                        {% set img_url = "http://cdn.akamai.steamstatic.com/steam/apps/" + game['game_link'].split('/')[4] + "/header.jpg" %}
+                        {% set img_type = game['game_link'].split('/') %}
+                        {% set img_url = "http://cdn.akamai.steamstatic.com/steam/" + img_type[3] + "s/" + img_type[4] + "/header.jpg" %}
                         {% set game_url = game['game_link'] %}
                         <div class="col-sm-4 col-lg-4 col-md-4">
                             <div class="thumbnail">
                                 <a href={{ game_url }}><img src={{ img_url }} alt=""></a>
                                 <!-- "http://placehold.it/320x150" -->
                                 <div class="caption">
-                                    <h4 class="pull-right">{{ game['game_price'].split('$')[2] }}</h4>
-                                    <h4><a href={{ game_url }}>{{ game['game_name'] }}</a>
-                                    </h4>
+                                    <h5 class="pull-right">{{ game['game_price'] }}</h5>
+                                    <h5><a href={{ game_url }}>{{ game['game_name'] }}</a>
+                                    </h5>
                                     <p>{{ ', '.join(game['game_tags']).title() }}</p>
                                 </div>
                                 <div class="ratings">
-                                    <p class="pull-right">15 reviews</p>
+                                    <p class="pull-right">{{ game['total_reviews']|int }} reviews</p>
                                     <p>
+                                        {% for i in range(game['avg_score']|int + 1) %}
                                         <span class="glyphicon glyphicon-star"></span>
-                                        <span class="glyphicon glyphicon-star"></span>
-                                        <span class="glyphicon glyphicon-star"></span>
-                                        <span class="glyphicon glyphicon-star"></span>
-                                        <span class="glyphicon glyphicon-star"></span>
+                                        {% endfor %}
                                     </p>
                                 </div>
                             </div>

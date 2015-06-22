@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 import cPickle as pickle
+from collections import defaultdict
 
 # https://databricks-training.s3.amazonaws.com/movie-recommendation-with-mllib.html
 
@@ -13,7 +14,7 @@ def get_ratings_contents(save_pickle=False):
     game_names = pd.factorize(games_df.game_name)
     critics = pd.factorize(games_df.critic)
 
-    # if save_pickle:
+    if save_pickle:
     #     with open('data/critics.pkl', 'wb') as f_critic:
     #         pickle.dump(critics, f_critic)
 
@@ -26,6 +27,15 @@ def get_ratings_contents(save_pickle=False):
 
     return ratings_contents[ ['user', 'game', 'score'] ]
 
+
+def ratings_to_file():
+
+    ratings = get_ratings_contents()
+    ratings_text = ratings.to_csv(header=False, index=False)
+    with open('data/ratings.txt', 'wb') as f:
+        f.write(ratings_text)
+
+
 def get_ratings_data(ratings_contents):
     total_users = len(ratings_contents.user.unique())
     total_games = len(ratings_contents.game.unique())
@@ -36,12 +46,6 @@ def get_ratings_data(ratings_contents):
 
     return ratings_mat
 
-def ratings_to_file():
-
-    ratings = get_ratings_contents()
-    ratings_text = ratings.to_csv(header=False, index=False)
-    with open('data/ratings.txt', 'wb') as f:
-        f.write(ratings_text)
 
 def create_spark_ratings():
     sc = ps.SparkContext('local[4]')
@@ -58,6 +62,7 @@ def create_spark_ratings():
 
     return ratings
 
+
 def build_ALS_model(ratings):
     # Build the recommendation model using Alternating Least Squares
     rank = 10
@@ -65,6 +70,7 @@ def build_ALS_model(ratings):
     model = ALS.train(ratings, rank, numIterations)
 
     return model
+
 
 def evaluate_train_data(model, ratings):
 
@@ -83,28 +89,32 @@ def evaluate_train_data(model, ratings):
 
     return ratesAndPreds
 
-def create_predictions():
-    ratings = create_spark_ratings()
-    model = build_ALS_model(ratings)
-    predictions = evaluate_train_data(model, ratings).collect()
-    return predictions
 
-def predictions_to_file(predictions):
-    with open('data/predictions.csv', 'wb') as f:
-        for line in predictions:
-            label, rating = line
-            user, item = label
-            act_rating, pred_rating = rating
-            f.write(",".join(map(str, [user, item, act_rating, pred_rating])) + '\n')
-
-def one_prediction(model, user=None, n=6):
+def one_prediction(model, user=None, n=10):
     if user is None:
         ratings = get_ratings_contents()
         avg_ratings = ratings.groupby('game').mean()['score']
         top_games = avg_ratings.argsort()[: -(n + 1): -1]
+        return top_games
+
     predictions = model.recommendProducts(user, n)
     top_games = [line[1] for line in predictions]
     return top_games
+
+def top_10_games_all_users(data_sep, model, save_pickle=False):
+    users = data_sep.map(lambda l: int(l[1])).distinct().collect()
+    top_games = defaultdict(list)
+
+    for user in users:
+        top_10 = model.recommendProducts(user, 10)
+        for each in top_10:
+            user = each[0]
+            game = each[1]
+            top_games[user].append(game)
+
+    if save_pickle:
+        with open('data/top_games.pkl', 'wb') as f:
+            pickle.dump(top_games, f)
 
 
 
