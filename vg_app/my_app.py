@@ -54,13 +54,8 @@ def get_game_data(game, all_games):
 
         return game_dict
 
-def load_predictions(user=None):
-    
-
-    if user is None:
-        rec_games = top_games[0]
-    else:
-        rec_games = top_games[user]
+def load_predictions(user='all_users'):
+    rec_games = top_games[user]
     # Get all the recommended games
     rec_game_names = game_names[rec_games]
 

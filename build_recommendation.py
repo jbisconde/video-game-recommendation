@@ -101,12 +101,18 @@ def one_prediction(model, user=None, n=10):
     top_games = [line[1] for line in predictions]
     return top_games
 
-def top_10_games_all_users(data_sep, model, save_pickle=False):
+def top_10_games_all_users(data_sep, model, n=10, save_pickle=False):
     users = data_sep.map(lambda l: int(l[1])).distinct().collect()
     top_games = defaultdict(list)
 
+    ratings = get_ratings_contents()
+    avg_ratings = ratings.groupby('game').mean()['score']
+    all_users = avg_ratings.argsort()[: -(n + 1): -1].tolist()
+
+    top_games['all_users'] = all_users
+    
     for user in users:
-        top_10 = model.recommendProducts(user, 10)
+        top_10 = model.recommendProducts(user, n)
         for each in top_10:
             user = each[0]
             game = each[1]

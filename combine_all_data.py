@@ -46,6 +46,7 @@ def input_to_mongodb(games):
             try:
                 game_dict = steam_coll.find({'game_name': steam_game}).next()
                 game_dict['meta_name'] = meta_game
+                game_dict['game_link'] = game_dict['game_link'].split('?')[0]
 
                 coll.insert(game_dict, continue_on_error=True)
                 print meta_game
@@ -81,6 +82,7 @@ def get_meta_data_to_mongodb():
         agg_values = meta_summary.ix[meta_name]
         game['total_reviews'] = agg_values['total_reviews']
         game['avg_score'] = agg_values['avg_score']
+
         coll.update({'meta_name':meta_name}, {"$set": game}, upsert=False)
 
     client.close()
