@@ -2,6 +2,8 @@ from flask import Flask, request, render_template
 import random
 from pymongo import MongoClient
 import cPickle as pickle
+import shlex
+from collections import defaultdict
 import random
 
 app = Flask(__name__)
@@ -67,14 +69,27 @@ def load_predictions(user='all_users'):
             rec_games_data.append(game_dict)
     return rec_games_data
 
-
 @app.route('/')
 def display():
-    return render_template('index.html', DATA=PRED_DATA)
+    return render_template('index.html', DATA=PRED_DATA, TYPE=True)
 
 @app.route('/user/<int:user_id>')
 def display_user(user_id):
     return render_template('index.html', DATA=load_predictions(user_id))
+
+@app.route('/search', methods=['GET', 'POST'])
+def search():
+    search_dict = defaultdict(list)
+    if request.method == "POST":
+        search_cond = request.form['search']
+        all_condition = shlex.split(search_cond)
+        for cond in all_condition:
+            if cond[0] == '-':
+                search_dict['negative'].append(cond[1:])
+            else:
+                search_dict['positive'].append(cond)
+        return str(search_dict)
+
 
 if __name__ == '__main__':
     top_games, game_names, all_games = load_all_data()

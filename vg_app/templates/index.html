@@ -89,15 +89,20 @@
             </div>
 
             <div class="col-md-9" align="middle">
-                <form class="navbar-form" role="search">
+
+                <form class="navbar-form" action="/search" method=post>
                     <div class="form-group">
-                        <input type="text" class="form-control" placeholder="Search" style="width:480px;">
+                        <input type="text" name="search" class="form-control" placeholder="Search" value="{{ request.form.search }}" style="width:480px;">
                     </div>
-                    <button type="submit" class="btn btn-default">Submit</button>
+                    <button type="submit" class="btn btn-default">
+                        <i class="glyphicon glyphicon-search" style="color:darkred"></i>
+                    </button>
                 </form>
+
             </div>
 
             <div class="col-md-9">
+                {% if TYPE %}
                 <div class="row carousel-holder">
                     <div class="col-md-12">
                         <div id="carousel-example-generic" class="carousel slide" data-ride="carousel">
@@ -122,8 +127,19 @@
                         </div>
                     </div>
                 </div>
+                {% endif %}
 
+                <div class="list-group">
+                    <h4 align="middle" style="background-color:darkred;color:white;" class="list-group-item">
+                        {% if TYPE %}
+                        Most Popular Games
+                        {% else %}
+                        Recommended Top Games
+                        {% endif %}
+                    </h4>
+                </div>
                 <div class="row">
+
                     {% for game in DATA %}
                         {% set img_type = game['game_link'].split('/') %}
                         {% set img_url = "http://cdn.akamai.steamstatic.com/steam/" + img_type[3] + "s/" + img_type[4] + "/header.jpg" %}
