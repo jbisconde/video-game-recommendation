@@ -6,7 +6,7 @@ import pandas as pd
 from scipy import sparse
 import cPickle as pickle
 from collections import defaultdict
-
+import fuzzywuzzy
 # https://databricks-training.s3.amazonaws.com/movie-recommendation-with-mllib.html
 
 def get_ratings_contents(save_pickle=False):

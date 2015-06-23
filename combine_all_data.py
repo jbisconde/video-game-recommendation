@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from collections import defaultdict
 from pymongo import MongoClient
+from fuzzywuzzy import process
 from pymongo.errors import DuplicateKeyError
 import cPickle as pickle
 
@@ -92,11 +93,20 @@ def write_all_games_to_file():
     db = client['metacritic']
     coll = db['all_games']
 
+    # coll_games = list(coll.find())
+    # all_games = defaultdict(dict)
+
+    # for game in coll_games:
+    #     game_id = game['meta_name']
+    #     all_games[game_id] = game
     all_games = pd.DataFrame(list(coll.find()))
 
     with open('data/all_games.pkl', 'wb') as f:
         pickle.dump(all_games, f)
 
     client.close()
-    
+
+
+
+
 

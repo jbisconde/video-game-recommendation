@@ -76,14 +76,28 @@ def use_word2vec_model():
     with open('data/word2vec_model.pkl', 'rb') as f:
         model = pickle.load(f)
 
-def calc_doc2vec():
+def get_tags():
+    with open('data/all_games.pkl', 'rb') as f_all:
+        all_games = pickle.load(f_all)
+    game_tags = all_games[ ['meta_name', 'game_tags'] ].set_index('meta_name')
+    game_tags_dict = game_tags['game_tags'].to_dict()
+
+    return game_tags_dict
+
+
+def calc_doc2vec(game_tags_dict):
     games_df = get_data_from_mongodb()
-    games = get_games(games_df)
+    # games = get_games(games_df)
+    games = games_df.game_name.tolist()
     sentences = get_reviews(games_df)
+    # game_tags_dict = get_tags()
 
     labeled_sentences = []
     for i in xrange(len(games)):
-        sentence = doc2vec.LabeledSentence(words=sentences[i], labels=[games[i]])
+        game_labels = [games[i]]
+        # tag_labels = game_tags_dict.get(games[i], [])
+        # game_labels.extend(tag_labels)
+        sentence = doc2vec.LabeledSentence(words=sentences[i], labels=game_labels)
         labeled_sentences.append(sentence)
 
     model = Doc2Vec(alpha=0.025, min_alpha=0.025) #, train_words=False, train_lbls=True)
@@ -96,8 +110,10 @@ def calc_doc2vec():
 
     return model
 
-if __name__ == '__main__':
-    model = calc_doc2vec()
+def save_model(model):
+    with open('data/model.pkl', 'wb') as f_model:
+        pickle.dump(model, f_model)
+
 
 
 

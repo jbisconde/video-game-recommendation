@@ -3,11 +3,11 @@ import random
 from pymongo import MongoClient
 import cPickle as pickle
 import shlex
+from fuzzywuzzy import process as proc
 from collections import defaultdict
 import random
 
 app = Flask(__name__)
-PRED_DATA = None
 
 def load_all_data():
     with open('../data/top_games.pkl', 'rb') as f_top:
@@ -19,7 +19,10 @@ def load_all_data():
     with open('../data/all_games.pkl', 'rb') as f_all:
         all_games = pickle.load(f_all)
 
-    return top_games, game_names, all_games
+    with open('../data/model.pkl', 'rb') as f_model:
+        model = pickle.load(f_model)
+
+    return top_games, game_names, all_games, model
 
 def reformat_game_tags(game_tags):
     if len(game_tags) > 5:
@@ -84,15 +87,31 @@ def search():
         search_cond = request.form['search']
         all_condition = shlex.split(search_cond)
         for cond in all_condition:
+
             if cond[0] == '-':
-                search_dict['negative'].append(cond[1:])
+                real_cond = proc.extractOne(cond[1:], vocab)
+                search_dict['negative'].append(real_cond)
             else:
-                search_dict['positive'].append(cond)
-        return str(search_dict)
+                real_cond = proc.extractOne(cond, vocab)
+                search_dict['positive'].append(real_cond)
+
+        result = model.most_similar(positive=search_dict['positive'], negative=search_dict['negative'], topn=100)
+        games = [game[0] for game in result]
+
+        rec_games_data = []
+        for game in games:
+            # Check if the metacritic game is in the steam games
+            game_dict = get_game_data(game, all_games)
+            if game_dict:
+                rec_games_data.append(game_dict)
+
+    return render_template('index.html', DATA=rec_games_data)
+    # return str(games)
 
 
 if __name__ == '__main__':
-    top_games, game_names, all_games = load_all_data()
+    top_games, game_names, all_games, model = load_all_data()
+    vocab = model.vocab.keys()
     PRED_DATA = load_predictions()
     app.run(host='0.0.0.0', port=8080, debug=True)
 
