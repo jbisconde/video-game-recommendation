@@ -29,7 +29,6 @@ def get_ratings_contents(save_pickle=False):
 
 
 def ratings_to_file():
-
     ratings = get_ratings_contents()
     ratings_text = ratings.to_csv(header=False, index=False)
     with open('data/ratings.txt', 'wb') as f:

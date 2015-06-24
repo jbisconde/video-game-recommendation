@@ -56,10 +56,10 @@ def send_post_request(game_url, game_url_2):
     session.close()
     return soup
 
-def main_data():
+def initial_get_desc_and_tags():
     client = MongoClient()
     db = client['metacritic']
-    coll = db['steam_games2']
+    coll = db['steam_games']
     steam_data = list(coll.find())
     for game in steam_data:
         if ('game_desc' not in game.keys()):# or (not game['game_tags']):
@@ -74,16 +74,16 @@ def main_data():
             game['game_tags'] = game_tags
             coll.update({'_id':mongo_id}, {"$set": game}, upsert=False)
             
-    # client.close()
+    client.close()
 
-def get_all_game_urls(collection):
+def get_all_game_data(collection, update=True):
     base_url = 'http://store.steampowered.com/search/results?sort_by=_ASC&page='
-    add_url = '&snr=1_7_7_230_7'
-    total_pages = 486
+    # add_url = '&snr=1_7_7_230_7'
+    total_pages = 489
 
     for i in xrange(1, total_pages + 1):
         page_url = None
-        page_url = base_url + str(i) + add_url
+        page_url = base_url + str(i) #+ add_url
         content = requests.get(page_url).text
         # time.sleep(2)
         soup = BeautifulSoup(content, 'html5lib')
@@ -97,11 +97,15 @@ def get_all_game_urls(collection):
             game_dict['game_discount'] = div_values[4]
             game_dict['game_price'] = div_values[5]
             game_dict['game_link'] = result['href']
-            game_dict['_id'] = 'game_id:' + div_values[1] + str(i)
+            game_dict['_id'] = 'game_id:' + div_values[1]
+            mongo_id =  game_dict['_id'] + str(i)
 
             print div_values[1]
-            insert_game_to_mongodb(collection, game_dict)
-            
+            if update:
+                collection.update({'_id':game_dict['_id']}, {"$set": game_dict}, upsert=False)
+            else:
+                insert_game_to_mongodb(collection, game_dict)
+
 
 def insert_game_to_mongodb(collection, dictionary):
     try:
@@ -114,13 +118,12 @@ def insert_game_to_mongodb(collection, dictionary):
     if total_games % 100 == 0:
         print 'There are %d games so far.' % total_games
 
-
-def main():
+def initial_get_all_games():
     client = MongoClient()
     db = client['metacritic']
-    coll = db['steam_games2']
+    coll = db['steam_games']
     total_games_before = coll.find().count()
-    get_all_game_urls(coll)
+    get_all_game_data(coll, update=False)
     total_games_after = coll.find().count()
     total_inserts = total_games_after - total_games_before
 
@@ -129,4 +132,21 @@ def main():
         return 'No items were inserted into MongoDB.'
     else:
         return 'There were %d items inserted to MongoDB.' % total_inserts
+
+def update_all_games():
+    client = MongoClient()
+    db = client['metacritic']
+    coll = db['steam_games']
+    get_all_game_data(coll)
+
+    print 'Update is complete.'
+    client.close()
+
+
+
+
+
+
+
+
 

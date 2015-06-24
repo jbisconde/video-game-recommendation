@@ -6,31 +6,6 @@ from nltk.tokenize.punkt import PunktSentenceTokenizer
 from get_data import get_data_from_mongodb
 import string
 
-# not used
-def tokenize(doc):
-    plv = PunktLanguageVars()
-    snowball = SnowballStemmer('english')
-    return [snowball.stem(word) for word in plv.word_tokenize(doc.lower())]
-
-# not used
-def calc_tfidf(content):
-
-    vectorizer = TfidfVectorizer('content', tokenizer=tokenize,
-                                 stop_words=stopwords.words('english'),
-                               strip_accents='unicode',norm='l2')
-    tfidf = vectorizer.fit_transform(content)
-    return tfidf.toarray()
-
-# not used
-def get_summarization(documents):
-    for article in documents:
-        article_sentences = find_sentence(article)
-        tfidf = calc_tfidf(article_sentences)
-        max_index = tfidf.mean(axis=1).argmax()
-        summarization = article_sentences[max_index]
-        print summarization, '\n'
-
-
 
 def get_reviews(games_df):
     plv = PunktSentenceTokenizer()
