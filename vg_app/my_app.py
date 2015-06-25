@@ -1,11 +1,14 @@
 from flask import Flask, request, render_template
+
+from gensim.models.doc2vec import Doc2Vec
+from pandas.core.index import Index, _new_Index
+from pandas.core.frame import DataFrame
+from collections import defaultdict
+
 import random
-from pymongo import MongoClient
 import cPickle as pickle
 import shlex
 from fuzzywuzzy import process as proc
-from collections import defaultdict
-import random
 
 app = Flask(__name__)
 
@@ -22,7 +25,10 @@ def load_all_data():
     with open('../data/model.pkl', 'rb') as f_model:
         model = pickle.load(f_model)
 
-    return top_games, game_names, all_games, model
+    with open('../data/all_tags.pkl', 'rb') as f_tags:
+        all_tags = pickle.load(f_tags)
+
+    return top_games, game_names, all_games, model, all_tags
 
 def reformat_game_tags(game_tags):
     if len(game_tags) > 5:
@@ -74,11 +80,11 @@ def load_predictions(user='all_users'):
 
 @app.route('/')
 def display():
-    return render_template('index.html', DATA=PRED_DATA, TYPE=True)
+    return render_template('index.html', DATA=PRED_DATA, TYPE=True, TAGS=tag_keys)
 
 @app.route('/user/<int:user_id>')
 def display_user(user_id):
-    return render_template('index.html', DATA=load_predictions(user_id))
+    return render_template('index.html', DATA=load_predictions(user_id), TAGS=tag_keys)
 
 @app.route('/search', methods=['GET', 'POST'])
 def search():
@@ -105,14 +111,18 @@ def search():
             if game_dict:
                 rec_games_data.append(game_dict)
 
-    return render_template('index.html', DATA=rec_games_data)
+    return render_template('index.html', DATA=rec_games_data, TAGS=tag_keys)
     # return str(games)
 
+@app.route('/tags/<string:game_tags>')
+def display_game_tags(game_tags):
+    return render_template('index.html', DATA=all_tags[game_tags], TAGS=tag_keys)
 
 if __name__ == '__main__':
-    top_games, game_names, all_games, model = load_all_data()
+    top_games, game_names, PRED_DATA, model, all_tags = load_all_data()
     vocab = model.vocab.keys()
-    PRED_DATA = load_predictions()
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    tag_keys = sorted(all_tags.keys())
+    #PRED_DATA = load_predictions()
+    app.run(host='0.0.0.0', port=80, debug=True)
 
 
