@@ -1,10 +1,12 @@
 from flask import Flask, request, render_template
 
-from gensim.models.doc2vec import Doc2Vec
-from pandas.core.index import Index, _new_Index
-from pandas.core.frame import DataFrame
-from collections import defaultdict
+# from gensim.models.doc2vec import Doc2Vec
+# from pandas.core.index import Index, _new_Index
+# from pandas.core.frame import DataFrame
 
+from collections import defaultdict
+from operator import itemgetter
+import pandas as pd
 import random
 import cPickle as pickle
 import shlex
@@ -13,12 +15,6 @@ from fuzzywuzzy import process as proc
 app = Flask(__name__)
 
 def load_all_data():
-    with open('../data/top_games.pkl', 'rb') as f_top:
-        top_games = pickle.load(f_top)
-
-    with open('../data/game_names.pkl', 'rb') as f_name:
-        game_names = pickle.load(f_name)
-
     with open('../data/all_games.pkl', 'rb') as f_all:
         all_games = pickle.load(f_all)
 
@@ -28,7 +24,7 @@ def load_all_data():
     with open('../data/all_tags.pkl', 'rb') as f_tags:
         all_tags = pickle.load(f_tags)
 
-    return top_games, game_names, all_games, model, all_tags
+    return all_games, all_tags, model
 
 def reformat_game_tags(game_tags):
     if len(game_tags) > 5:
@@ -78,6 +74,19 @@ def load_predictions(user='all_users'):
             rec_games_data.append(game_dict)
     return rec_games_data
 
+def check_for_duplicates(recommended_games):
+    seen = set()
+    new_list = []
+    for d in recommended_games:
+        d_copy = d.copy()
+        d_copy['game_tags'] = str(d_copy['game_tags'])
+        t = tuple(d_copy.items())
+        if t not in seen:
+            seen.add(t)
+            new_list.append(d)
+
+    return new_list
+
 @app.route('/')
 def display():
     return render_template('index.html', DATA=PRED_DATA, TYPE=False, TAGS=tag_keys)
@@ -95,36 +104,43 @@ def search():
     search_dict = defaultdict(list)
     if request.method == "POST":
         search_cond = request.form['search']
+        if not search_cond:
+            return display()
         all_condition = shlex.split(search_cond)
         for cond in all_condition:
 
             if cond[0] == '-':
-                real_cond = proc.extractOne(cond[1:], vocab)
+                real_cond = proc.extractOne(cond[1:], game_vocab)
                 search_dict['negative'].append(real_cond)
             else:
-                real_cond = proc.extractOne(cond, vocab)
+                real_cond = proc.extractOne(cond, game_vocab)
                 search_dict['positive'].append(real_cond)
 
-        result = model.most_similar(positive=search_dict['positive'], negative=search_dict['negative'], topn=100)
+        result = model.most_similar(positive=search_dict['positive'], negative=search_dict['negative'], topn=10)
         games = [game[0] for game in result]
 
         rec_games_data = []
         for game in games:
-            # Check if the metacritic game is in the steam games
-            game_dict = get_game_data(game, all_games)
-            if game_dict:
-                rec_games_data.append(game_dict)
+            real_games = proc.extract(game, game_vocab)
+            for real_game in real_games:
+                if real_game[1] >= 90:
+                    real_game_data = all_games_df[all_games_df['game_name'] == real_game[0]].to_dict('record')
+                    rec_games_data.append(real_game_data[0])
 
+        rec_games_data = check_for_duplicates(rec_games_data)
+        # rec_games_data = sorted(rec_games_data, key=itemgetter('total_user_reviews', 'avg_user_reviews'), reverse=True)
     return render_template('index.html', DATA=rec_games_data, TYPE=True, TAGS=tag_keys)
-    # return str(games)
 
 @app.route('/tags/<string:game_tags>')
 def display_game_tags(game_tags):
     return render_template('index.html', DATA=all_tags[game_tags][:120], TYPE=True, TAGS=tag_keys)
 
 if __name__ == '__main__':
-    top_games, game_names, all_games, model, all_tags = load_all_data()
-    vocab = model.vocab.keys()
+    all_games, all_tags, model = load_all_data()
+    all_games_df = pd.DataFrame(all_games)
+
+    game_vocab = all_games_df['game_name'].unique()
+    # vocab = model.vocab.keys()
     tag_keys = sorted(all_tags.keys())
     PRED_DATA = all_games[:60]
     app.run(host='0.0.0.0', port=80, debug=True)

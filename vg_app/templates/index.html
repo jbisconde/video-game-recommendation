@@ -44,7 +44,7 @@
             <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                 <ul class="nav navbar-nav">
                     <li>
-                        <a href="../about">About</a>
+                        <a href="..">About</a>
                     </li>
                     <li>
                         <a href="../all_games">All Games</a>
@@ -137,9 +137,9 @@
                 <div class="list-group">
                     <h4 align="middle" style="background-color:#222;color:white;" class="list-group-item">
                         {% if TYPE %}
-                        Most Popular Games
-                        {% else %}
                         Recommended Top Games
+                        {% else %}
+                        Most Popular Games
                         {% endif %}
                     </h4>
                 </div>
@@ -194,7 +194,7 @@
                   <a class="carousel-control right" href="#myCarousel" data-slide="next" style="position:fixed;">&rsaquo;</a>
                 </div>
 
-                <div align="left">
+                <div align="middle">
                     <!-- LINKED NAV -->
                     <ol class="carousel-linked-nav pagination">
                     {% for game in DATA %}

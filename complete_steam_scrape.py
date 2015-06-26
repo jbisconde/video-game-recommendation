@@ -10,6 +10,7 @@ import unirest
 import sys
 import traceback
 from os import listdir
+import re
 
 def initial_get_all_steam_games():
     client = MongoClient()
@@ -298,7 +299,9 @@ def create_all_tags():
     db = client['metacritic']
     coll = db['steam_games']
 
-    all_games = list(coll.find({'user_review': {"$exists": "true"} }))
+    all_games = list(coll.find({'user_review': {"$exists": "true"},
+                                'game_name': {'$not': re.compile("Demo")}
+                                }))
 
     tags_dict = defaultdict(dict)
     for game in all_games:
@@ -326,7 +329,8 @@ def limit_game_data(game=None, save_file=False):
     if game is None:
         all_games = list(
             coll.find({'user_review': {'$exists': 'true'}, 
-                        'total_user_reviews': {'$ne': 0} }, 
+                        'total_user_reviews': {'$ne': 0},
+                        'game_name': {'$not': re.compile("Demo")} }, 
             {
             'game_name': 1, 'game_date':1, 'game_desc':1, 
             'game_tags':1, 'game_price':1, 'game_discount':1, 
