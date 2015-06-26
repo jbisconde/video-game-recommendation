@@ -1,18 +1,73 @@
 import requests
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
+from collections import defaultdict
 from pymongo.errors import DuplicateKeyError
+import cPickle as pickle
+from operator import itemgetter
 import time
 import unirest
 import sys
 import traceback
+from os import listdir
 
-'''
-    <div id="game_area_metalink">
-        <a href="http://www.metacritic.com/game/pc/counter-strike-global-offensive" target="_blank">Read Critic Reviews</a>
-        <img src="http://store.akamai.steamstatic.com/public/images/ico/iconExternalLink.gif" border="0" align="bottom">
-    </div>
-'''
+def initial_get_all_steam_games():
+    client = MongoClient()
+    db = client['metacritic']
+    coll = db['steam_games']
+    total_games_before = coll.find().count()
+
+    # Get all the data from steam
+    get_all_steam_game_data(coll)
+
+    total_games_after = coll.find().count()
+    total_inserts = total_games_after - total_games_before
+
+    client.close()
+    if total_games_before == total_games_after:
+        return 'No items were inserted into MongoDB.'
+    else:
+        return 'There were %d items inserted to MongoDB.' % total_inserts
+
+
+def get_all_steam_game_data(collection):
+    base_url = 'http://store.steampowered.com/search/results?sort_by=_ASC&page='
+    # add_url = '&snr=1_7_7_230_7'
+    total_pages = 489
+
+    for i in xrange(1, total_pages + 1):
+        page_url = None
+        page_url = base_url + str(i) #+ add_url
+        content = requests.get(page_url).text
+        # time.sleep(2)
+        soup = BeautifulSoup(content, 'html5lib')
+        results = soup.select('a.search_result_row.ds_collapse_flag')
+
+        for result in results:
+            game_dict = {}
+            div_values = [div.text.strip() for div in result.select('div')]
+            game_dict['game_name'] = div_values[1]
+            game_dict['game_date'] = div_values[2]
+            game_dict['game_discount'] = div_values[4]
+            game_dict['game_price'] = div_values[5]
+            game_dict['game_link'] = result['href']
+            game_dict['_id'] = 'game_id:' + div_values[1]
+
+            print div_values[1]
+            insert_game_data_to_mongodb(collection, game_dict)
+
+
+def insert_game_data_to_mongodb(collection, dictionary):
+    try:
+        collection.insert(dictionary, 
+            continue_on_error=True)
+    except DuplicateKeyError:
+        print 'Already inserted' + dictionary['_id']
+
+    total_count = collection.find().count()
+    if total_count % 100 == 0:
+        print 'There are %d so far.' % total_count
+
 
 def scrape_steam_data(game_url):
     try:
@@ -45,8 +100,8 @@ def scrape_steam_data(game_url):
         print "Metacritic is in Steam, but could not find any link."
         # traceback.print_exc(file=sys.stdout)
         return
-
     return game_desc, game_tags, meta_link
+
 
 def send_post_request(game_url, game_url_2):
     payload = {
@@ -67,6 +122,7 @@ def send_post_request(game_url, game_url_2):
     session.close()
     # Return the soup object to parse later
     return soup
+
 
 def parse_through_steam_soup(soup, game_url):
     # Get the game description
@@ -97,28 +153,9 @@ def parse_through_steam_soup(soup, game_url):
     # Return the description and tags
     return game_desc, game_tags
 
-def parse_through_metacritic(meta_link):
-    user_link = '/user-reviews'
-    critic_link = '/critic-reviews'
-    add_pages = '?page='
 
-    meta_user_review_link = meta_link + user_link
-    meta_user_review_link_more = meta_user_review_link + add_pages
-
-    meta_critic_review_link = meta_link + critic_link
-    meta_critic_review_link_more = meta_critic_review_link + add_pages
-
-    try:
-        content = requests.get(meta_user_review_link, timeout=5).text
-    except requests.exceptions.RequestException as e:
-        print e
-        traceback.print_exc(file=sys.stdout)
-        return
-
-    soup = BeautifulSoup(content, 'html.parser')
-    # Not Working - Metacritic is forbidden
-
-def create_additional_data():
+# Get the description, game tags and metacritic link
+def get_additional_data():
     client = MongoClient()
     db = client['metacritic']
     coll = db['steam_games']
@@ -147,9 +184,9 @@ def create_additional_data():
             game['game_tags'] = game_tags
             game['meta_link'] = meta_link
             print meta_link
-            coll.update({'_id':mongo_id}, {"$set": game}, upsert=False)
-            
+            coll.update({'_id':mongo_id}, {"$set": game}, upsert=False)  
     client.close()
+
 
 def get_metacritic_reviews(meta_link, user=True):
     base_url = "https://byroredux-metacritic.p.mashape.com/"
@@ -163,21 +200,193 @@ def get_metacritic_reviews(meta_link, user=True):
 
     # These code snippets use an open-source library. http://unirest.io/python
     game_url = mashape_url + meta_link.split('/')[-1]
-    response = unirest.get(game_url,
+    response = requests.get(game_url,
       headers={
-        "X-Mashape-Key": "1QxRFuS3QAmshvDGXNOrFirZ70K1p1RZLQOjsniSbuQpk24WB0",
+        "X-Mashape-Key": "h8QdBav6HZmshk9E8AoErg4L9EIqp1zKztVjsnFMz5bYpqC0iY",
         "Accept": "application/json"
-      }
+      }, timeout=100
     )
     return response
 
 
+def get_metacritic_data():
+    client = MongoClient()
+    db = client['metacritic']
+    coll = db['steam_games']
+    steam_data = list(coll.find( {"meta_link": {"$ne": "None"}} ))
+
+    for game in steam_data:
+        mongo_id = game['_id']
+        meta_link = game['meta_link']
+        if 'user_review' not in game.keys():
+            user_response = get_metacritic_reviews(meta_link)
+            if user_response.ok:
+                game['user_review'] = user_response.json()
+
+            critic_response = get_metacritic_reviews(meta_link, user=False)
+            if critic_response.ok:     
+                game['critic_review'] = critic_response.json()
+
+            if user_response.ok or critic_response.ok:
+                coll.update({'_id':mongo_id}, {"$set": game}, upsert=False)
+
+            print mongo_id
+            print "User Review Status:", user_response.ok
+            print "Critic Review Status:", critic_response.ok, '\n'
 
 
+def get_steam_image_data():
+    images_list = os.listdir('images')
+    client = MongoClient()
+    db = client['metacritic']
+    coll = db['steam_games']
+    steam_data = list(coll.find( {"meta_link": {"$ne": "None"}} ))
+
+    for game in steam_data:
+        img_type = game['game_link'].split('/')
+        img_url = "http://cdn.akamai.steamstatic.com/steam/" + img_type[3] + "s/" + img_type[4] + "/header.jpg"
+        check_image = img_type[3] + '_' + img_type[4] + '.jpg'
+        save_file = 'images/' + check_image
+
+        if check_image not in images_list:
+            urllib.urlretrieve(img_url, save_file)
 
 
+def aggregate_metacritic_data():
+    client = MongoClient()
+    db = client['metacritic']
+    coll = db['steam_games']
 
+    all_games = list(coll.find({'user_review': {"$exists": "true"} }))
 
+    # game = all_games[0]
+
+    for game in all_games:
+        mongo_id = game['_id']
+        user_data = game['user_review']
+        critic_data = game['critic_review']
+
+        total_user_reviews = user_data['count']
+        if total_user_reviews:
+            user_reviews = pd.DataFrame(user_data['reviews'])
+            user_reviews.loc[:, 'score'] = user_reviews.loc[:, 'score'].astype(float)
+
+            avg_user_reviews = user_reviews['score'].mean()
+            game['total_user_reviews'] = total_user_reviews
+            game['avg_user_reviews'] = avg_user_reviews
+        else:
+            game['total_user_reviews'] = 0
+            game['avg_user_reviews'] = ''
+
+        total_critic_reviews = critic_data['count']
+        if total_critic_reviews:
+            critic_reviews = pd.DataFrame(critic_data['result'])
+            critic_reviews.loc[:, 'score'] = critic_reviews.loc[:, 'score'].astype(float)
+
+            avg_critic_reviews = critic_reviews['score'].mean()
+            game['total_critic_reviews'] = total_critic_reviews
+            game['avg_critic_reviews'] = avg_critic_reviews
+        else:
+            game['total_critic_reviews'] = 0
+            game['avg_critic_reviews'] = ''
+
+        coll.update({'_id':mongo_id}, {"$set": game}, upsert=False)
+    client.close()
+
+def create_all_tags():
+    client = MongoClient()
+    db = client['metacritic']
+    coll = db['steam_games']
+
+    all_games = list(coll.find({'user_review': {"$exists": "true"} }))
+
+    tags_dict = defaultdict(dict)
+    for game in all_games:
+        for tag in game['game_tags']:
+            if tag not in tags_dict.keys():
+                tags_dict[tag]['game_names'] = []
+                tags_dict[tag]['count'] = 0
+
+            tags_dict[tag]['game_names'].append(game['game_name'])
+            tags_dict[tag]['count'] += 1
+
+    tags_coll = db['steam_tags']
+
+    for tag, tag_data in tags_dict.iteritems():
+        tag_data['_id'] = tag
+        insert_game_data_to_mongodb(tags_coll, tag_data)
+    client.close()
+
+def limit_game_data(game=None, save_file=False):
+    client = MongoClient()
+    db = client['metacritic']
+    coll = db['steam_games']
+
+    coll.ensure_index([('total_user_reviews', -1), ('avg_user_reviews', -1)])
+    if game is None:
+        all_games = list(
+            coll.find({'user_review': {'$exists': 'true'}, 
+                        'total_user_reviews': {'$ne': 0} }, 
+            {
+            'game_name': 1, 'game_date':1, 'game_desc':1, 
+            'game_tags':1, 'game_price':1, 'game_discount':1, 
+            'game_link':1, 'meta_link':1, 'total_user_reviews':1, 
+            'avg_user_reviews':1, 'total_critic_reviews':1, 'avg_critic_reviews':1
+            })
+            .sort([('total_user_reviews', -1), ('avg_user_reviews', -1)])
+            #.limit(1000)
+            )
+    else:
+        all_games = list(coll.find({'user_review': {'$exists': 'true'}, 
+                        'total_user_reviews': {'$ne': 0},'game_name': game},
+            {
+            'game_name': 1, 'game_date':1, 'game_desc':1, 
+            'game_tags':1, 'game_price':1, 'game_discount':1, 
+            'game_link':1, 'meta_link':1, 'total_user_reviews':1, 
+            'avg_user_reviews':1, 'total_critic_reviews':1, 'avg_critic_reviews':1
+            }))
+        client.close()
+
+    client.close()
+    for game in all_games:
+        game['avg_user_reviews'] = game['avg_user_reviews'] / 2.
+        tags = game['game_tags']
+        if len(tags) > 5:
+            tags = tags[:5]
+            game['game_tags'] = tags
+    
+    if save_file:
+        with open('data/all_games.pkl', 'wb') as f:
+            pickle.dump(all_games, f)
+    else:
+        return all_games
+
+def limit_tag_data(save_file=False):
+    client = MongoClient()
+    db = client['metacritic']
+    coll = db['steam_tags']
+
+    all_tags = list(coll.find()
+                        .sort('count', -1)
+                        .limit(20))
+    client.close()
+
+    tag_dict = defaultdict(list)
+    for tag in all_tags:
+        games = tag['game_names']
+
+        for game in games:
+            tag_dict[tag['_id']].extend(limit_game_data(game))
+    
+    for tag, data in tag_dict.iteritems():
+        tag_dict[tag] = sorted(data, 
+                            key=itemgetter('total_user_reviews', 'avg_user_reviews'), 
+                            reverse=True)
+    if save_file:
+        with open('data/all_tags.pkl', 'wb') as f:
+            pickle.dump(tag_dict, f)
+    else:
+        return all_games
 
 
 

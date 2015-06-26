@@ -80,11 +80,15 @@ def load_predictions(user='all_users'):
 
 @app.route('/')
 def display():
-    return render_template('index.html', DATA=PRED_DATA, TYPE=True, TAGS=tag_keys)
+    return render_template('index.html', DATA=PRED_DATA, TYPE=False, TAGS=tag_keys)
+
+@app.route('/all_games')
+def display_all_games():
+    return render_template('index.html', DATA=all_games[:120], TYPE=True, TAGS=tag_keys)
 
 @app.route('/user/<int:user_id>')
 def display_user(user_id):
-    return render_template('index.html', DATA=load_predictions(user_id), TAGS=tag_keys)
+    return render_template('index.html', DATA=load_predictions(user_id), TYPE=True, TAGS=tag_keys)
 
 @app.route('/search', methods=['GET', 'POST'])
 def search():
@@ -111,18 +115,18 @@ def search():
             if game_dict:
                 rec_games_data.append(game_dict)
 
-    return render_template('index.html', DATA=rec_games_data, TAGS=tag_keys)
+    return render_template('index.html', DATA=rec_games_data, TYPE=True, TAGS=tag_keys)
     # return str(games)
 
 @app.route('/tags/<string:game_tags>')
 def display_game_tags(game_tags):
-    return render_template('index.html', DATA=all_tags[game_tags], TAGS=tag_keys)
+    return render_template('index.html', DATA=all_tags[game_tags][:120], TYPE=True, TAGS=tag_keys)
 
 if __name__ == '__main__':
-    top_games, game_names, PRED_DATA, model, all_tags = load_all_data()
+    top_games, game_names, all_games, model, all_tags = load_all_data()
     vocab = model.vocab.keys()
     tag_keys = sorted(all_tags.keys())
-    #PRED_DATA = load_predictions()
+    PRED_DATA = all_games[:60]
     app.run(host='0.0.0.0', port=80, debug=True)
 
 
