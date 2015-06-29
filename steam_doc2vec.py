@@ -43,7 +43,7 @@ def build_doc2vec_model(save_file=False):
             sentence = doc2vec.LabeledSentence(words=review_sentence, labels=[game_name])
             labeled_sentences.append(sentence)
 
-    model = Doc2Vec(alpha=0.025, min_alpha=0.025, workers=4) #, train_words=False, train_lbls=True)
+    model = Doc2Vec(alpha=0.025, min_alpha=0.025, workers=4)#, train_words=False, train_lbls=True)
     model.build_vocab(labeled_sentences)
 
     for epoch in range(10):

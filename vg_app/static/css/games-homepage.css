@@ -45,6 +45,12 @@ body {
     padding: 0;
 }
 
+.logo img {
+    height: 30px;
+    width: auto;
+    padding-bottom: 6px;
+}
+
 .icons {
     display:inline-block;
     float:right;

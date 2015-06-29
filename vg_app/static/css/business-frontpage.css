@@ -32,6 +32,12 @@ body {
     color: #fff;
 }
 
+.logo img {
+    height: 30px;
+    width: auto;
+    padding-bottom: 6px;
+}
+
 .img-center {
     margin: 0 auto;
     width: 300px;
