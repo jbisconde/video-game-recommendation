@@ -1,9 +1,5 @@
 from flask import Flask, request, render_template
 
-# from gensim.models.doc2vec import Doc2Vec
-# from pandas.core.index import Index, _new_Index
-# from pandas.core.frame import DataFrame
-
 from collections import defaultdict
 from operator import itemgetter
 import pandas as pd
@@ -18,13 +14,13 @@ def load_all_data():
     with open('../data/all_games.pkl', 'rb') as f_all:
         all_games = pickle.load(f_all)
 
-    with open('../data/model.pkl', 'rb') as f_model:
-        model = pickle.load(f_model)
+    # with open('../data/model.pkl', 'rb') as f_model:
+    #     model = pickle.load(f_model)
 
     with open('../data/all_tags.pkl', 'rb') as f_tags:
         all_tags = pickle.load(f_tags)
 
-    return all_games, all_tags, model
+    return all_games, all_tags#, model
 
 def reformat_game_tags(game_tags):
     if len(game_tags) > 5:
@@ -93,7 +89,19 @@ def display():
 
 @app.route('/all_games')
 def display_all_games():
-    return render_template('index.html', DATA=all_games[:120], TYPE=True, TAGS=tag_keys)
+    return render_template('index.html', DATA=all_games[:120], TYPE=True, TAGS=tag_keys, NAME="All Games")
+
+@app.route('/contact')
+def display_contact():
+    return render_template('index_contact.html')
+
+@app.route('/about')
+def display_about():
+    return render_template('index_about.html')
+
+@app.route('/tags/<string:game_tags>')
+def display_game_tags(game_tags):
+    return render_template('index.html', DATA=all_tags[game_tags][:120], TYPE=True, TAGS=tag_keys, NAME=game_tags)
 
 @app.route('/user/<int:user_id>')
 def display_user(user_id):
@@ -106,6 +114,7 @@ def search():
         search_cond = request.form['search']
         if not search_cond:
             return display()
+        games = []
         all_condition = shlex.split(search_cond)
         for cond in all_condition:
 
@@ -115,9 +124,10 @@ def search():
             else:
                 real_cond = proc.extractOne(cond, game_vocab)
                 search_dict['positive'].append(real_cond)
+                games.append(real_cond)
 
         result = model.most_similar(positive=search_dict['positive'], negative=search_dict['negative'], topn=10)
-        games = [game[0] for game in result]
+        games.extend([game[0] for game in result])
 
         rec_games_data = []
         for game in games:
@@ -128,15 +138,15 @@ def search():
                     rec_games_data.append(real_game_data[0])
 
         rec_games_data = check_for_duplicates(rec_games_data)
-        # rec_games_data = sorted(rec_games_data, key=itemgetter('total_user_reviews', 'avg_user_reviews'), reverse=True)
-    return render_template('index.html', DATA=rec_games_data, TYPE=True, TAGS=tag_keys)
+        # rec_games_data = sorted(rec_games_data, key=itemgetter('total_user_reviews', 'avg_user_reviews'), reverse=T$
+    return render_template('index.html', DATA=rec_games_data, TYPE=True, TAGS=tag_keys, NAME=search_cond)
 
-@app.route('/tags/<string:game_tags>')
-def display_game_tags(game_tags):
-    return render_template('index.html', DATA=all_tags[game_tags][:120], TYPE=True, TAGS=tag_keys)
+
+
 
 if __name__ == '__main__':
-    all_games, all_tags, model = load_all_data()
+    # all_games, all_tags, model = load_all_data()
+    all_games, all_tags = load_all_data()
     all_games_df = pd.DataFrame(all_games)
 
     game_vocab = all_games_df['game_name'].unique()

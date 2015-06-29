@@ -44,28 +44,14 @@
             <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                 <ul class="nav navbar-nav">
                     <li>
-                        <a href="..">About</a>
+                        <a href="../about">How It Works</a>
                     </li>
                     <li>
                         <a href="../all_games">All Games</a>
                     </li>
                     <li>
-                        <a href="..">Contact Info</a>
+                        <a href="../contact">Contact</a>
                     </li>
-<!--                     <li>
-                      <form class="form-signin">
-                        <label for="inputEmail" class="sr-only">username</label>
-                        <input type="email" id="inputEmail" class="form-control" placeholder="username" required autofocus>
-                        <label for="inputPassword" class="sr-only">password</label>
-                        <input type="password" id="inputPassword" class="form-control" placeholder="password" required>
-                        <div class="checkbox">
-                          <label>
-                            <input type="checkbox" value="remember-me"> Remember me
-                          </label>
-                        </div>
-                        <button class="btn btn-sm btn-primary btn-block" type="submit">Sign in</button>
-                      </form>
-                    </li> -->
                 </ul>
             </div>
             <!-- /.navbar-collapse -->
@@ -93,7 +79,7 @@
                 </div>
             </div>
 
-            <div class="col-md-9" align="middle">
+            <div class="col-md-9" align="middle" style="padding-bottom:10px">
 
                 <form class="navbar-form" action="/search" method=post>
                     <div class="form-group">
@@ -133,11 +119,13 @@
                     </div>
                 </div>
                 {% endif %}
+            </div>
 
+            <div class="col-md-9">
                 <div class="list-group">
                     <h4 align="middle" style="background-color:#222;color:white;" class="list-group-item">
                         {% if TYPE %}
-                        Recommended Top Games
+                        Recommended Top Games: {{ NAME }}
                         {% else %}
                         Most Popular Games
                         {% endif %}
@@ -148,35 +136,43 @@
             <div class="col-md-9">
                 <div id="myCarousel" class="carousel slide">
                   <!-- Carousel items -->
-                  <div class="carousel-inner">
-                {% for game in DATA %}
-                    {% set img_type = game['game_link'].split('/') %}
-                    {% set img_url = "../static/images/" + img_type[3] + "_" + img_type[4] + ".jpg" %}
-                    {% set game_url = game['game_link'] %}
+                    <div class="carousel-inner">
+                    {% for game in DATA %}
+                        {% set img_type = game['game_link'].split('/') %}
+                        {% set img_url = "../static/images/" + img_type[3] + "_" + img_type[4] + ".jpg" %}
+                        {% set game_url = game['game_link'] %}
+                        {% set meta_url = game['meta_link'] %}
 
-                    {% if (loop.index - 1) == 0 %}
-                    <div class="active item">
-                    {% elif (loop.index - 1) is divisibleby 6 * (TYPE|int + 1) %}
-                    </div>
-                    <div class="item">
-                    {% endif %}
-                    <div class="col-sm-4 col-lg-4 col-md-4">
-                        <div class="thumbnail">
-                            <a href={{ game_url }}>
+                        {% if (loop.index - 1) == 0 %}
+                        <div class="active item">
+                        {% elif (loop.index - 1) is divisibleby 6 * (TYPE|int + 1) %}
+                        </div>
+                        <div class="item">
+                        {% endif %}
+                        <div class="col-sm-4 col-lg-4 col-md-4">
+                            <div class="thumbnail">
                                 <img src={{ img_url }}>
                                 <p style="position:absolute;top:5.8em;right:1em;font-weight:bold;color:darkgreen;font-size:larger;background-color:white">{{ game['game_discount'] }}
                                 </p>
-                            </a>
-                            <div class="caption">
-                                <h5 class="pull-right">{{ game['game_price'] }}</h5>
-                                <h5><a href={{ game_url }}>{{ game['game_name'] }}</a>
-                                </h5>
-<!--                                     {% for tag in game['game_tags'] %}
-                                <a style="background-color:gray;color:white;font-size:smaller;font-family:monospace;">{{ tag.title() }}</a>
-                                {% endfor %} -->
-                                <p>{{ ', '.join(game['game_tags']).title() }}</p>
-                            </div>
+
+                                <div class="caption">
+                                    <h5 class="pull-right">{{ game['game_price'] }}</h5>
+                                    <h5><a href={{ game_url }}>{{ game['game_name'] }}</a>
+                                    </h5>
+    <!--                                     {% for tag in game['game_tags'] %}
+                                    <a style="background-color:gray;color:white;font-size:smaller;font-family:monospace;">{{ tag.title() }}</a>
+                                    {% endfor %} -->
+                                    <p>{{ ', '.join(game['game_tags']).title() }}</p>
+                                </div>
+
                             <div class="ratings">
+                                <a href={{ meta_url }} class="icons">
+                                    <img src="../static/images/metacritic.png">
+                                </a>
+                                <a href={{ game_url }} class="icons">
+                                    <img src="../static/images/steam.png">
+                                </a><br>
+
                                 <p class="pull-right">{{ game['total_user_reviews']|int }} reviews</p>
                                 <p>
                                     {% for i in range(game['avg_user_reviews']|int + 1) %}
@@ -187,29 +183,27 @@
                         </div>
                     </div>
                 {% endfor %}
-                    </div>
-                  </div>
-                  <!-- Carousel nav -->
-                  <a class="carousel-control left" href="#myCarousel" data-slide="prev" style="position:fixed;">&lsaquo;</a>
-                  <a class="carousel-control right" href="#myCarousel" data-slide="next" style="position:fixed;">&rsaquo;</a>
                 </div>
+            </div>
+                <!-- Carousel nav -->
+                <a class="carousel-control left" href="#myCarousel" data-slide="prev" style="position:fixed;">&lsaquo;</a>
+                <a class="carousel-control right" href="#myCarousel" data-slide="next" style="position:fixed;">&rsaquo;</a>
+        </div>
 
-                <div align="middle">
-                    <!-- LINKED NAV -->
-                    <ol class="carousel-linked-nav pagination">
-                    {% for game in DATA %}
-                        {% set count = (((loop.index - 1) / (6 * (TYPE|int + 1))) + 1)|int %}
-                        {% set count_href = "#" + count|string %}
+            <div align="middle">
+                <!-- LINKED NAV -->
+                <ol class="carousel-linked-nav pagination">
+                {% for game in DATA %}
+                    {% set count = (((loop.index - 1) / (6 * (TYPE|int + 1))) + 1)|int %}
+                    {% set count_href = "#" + count|string %}
 
-                        {% if (loop.index - 1) == 0 %}
-                        <li class="active"><a href={{ count_href }}>{{ count }}</a></li>
-                        {% elif (loop.index - 1) is divisibleby (6 * (TYPE|int + 1)) %}
-                        <li><a href={{ count_href }}>{{ count }}</a></li>
-                        {% endif %}
-                    {% endfor %}
-                    </ol>
-                </div>
-
+                    {% if (loop.index - 1) == 0 %}
+                    <li class="active"><a href={{ count_href }}>{{ count }}</a></li>
+                    {% elif (loop.index - 1) is divisibleby (6 * (TYPE|int + 1)) %}
+                    <li><a href={{ count_href }}>{{ count }}</a></li>
+                    {% endif %}
+                {% endfor %}
+                </ol>
             </div>
         </div>
     </div>

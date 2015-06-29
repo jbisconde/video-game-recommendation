@@ -12,9 +12,9 @@ body {
     width: 100%;
 }
 
-
 .carousel-holder {
-    margin-bottom: 30px;
+    margin-bottom: 10px;
+    margin-top: 10px;
 }
 
 .carousel-control,
@@ -23,7 +23,7 @@ body {
 }
 
 .caption {
-    height: 130px;
+    height: 100px;
     overflow: hidden;
 }
 
@@ -43,6 +43,18 @@ body {
 
 .thumbnail {
     padding: 0;
+}
+
+.icons {
+    display:inline-block;
+    float:right;
+}
+
+.icons img {
+    height: 20px;
+    width: auto;
+    padding-left:2px;
+    padding-right:2px;
 }
 
 .thumbnail .caption-full {
