@@ -14,13 +14,13 @@ def load_all_data():
     with open('../data/all_games.pkl', 'rb') as f_all:
         all_games = pickle.load(f_all)
 
-    # with open('../data/model.pkl', 'rb') as f_model:
-    #     model = pickle.load(f_model)
+    with open('../data/model.pkl', 'rb') as f_model:
+        model = pickle.load(f_model)
 
     with open('../data/all_tags.pkl', 'rb') as f_tags:
         all_tags = pickle.load(f_tags)
 
-    return all_games, all_tags#, model
+    return all_games, all_tags, model
 
 def reformat_game_tags(game_tags):
     if len(game_tags) > 5:
@@ -111,7 +111,7 @@ def display_user(user_id):
 def search():
     search_dict = defaultdict(list)
     if request.method == "POST":
-        search_cond = request.form['search']
+        search_cond = str(request.form['search'])
         if not search_cond:
             return display()
         games = []
@@ -120,22 +120,21 @@ def search():
 
             if cond[0] == '-':
                 real_cond = proc.extractOne(cond[1:], game_vocab)
-                search_dict['negative'].append(real_cond)
+                search_dict['negative'].append(real_cond[0])
             else:
                 real_cond = proc.extractOne(cond, game_vocab)
-                search_dict['positive'].append(real_cond)
-                games.append(real_cond)
+                search_dict['positive'].append(real_cond[0])
+                games.append(real_cond[0])
 
-        result = model.most_similar(positive=search_dict['positive'], negative=search_dict['negative'], topn=10)
+        result = model.most_similar(positive=search_dict['positive'], negative=search_dict['negative'], topn=20)
         games.extend([game[0] for game in result])
 
         rec_games_data = []
         for game in games:
-            real_games = proc.extract(game, game_vocab)
+            real_games = proc.extractBests(game, game_vocab, score_cutoff=90)
             for real_game in real_games:
-                if real_game[1] >= 90:
-                    real_game_data = all_games_df[all_games_df['game_name'] == real_game[0]].to_dict('record')
-                    rec_games_data.append(real_game_data[0])
+                real_game_data = all_games_df[all_games_df['game_name'] == real_game[0]].to_dict('record')
+                rec_games_data.append(real_game_data[0])
 
         rec_games_data = check_for_duplicates(rec_games_data)
         # rec_games_data = sorted(rec_games_data, key=itemgetter('total_user_reviews', 'avg_user_reviews'), reverse=T$
@@ -145,8 +144,8 @@ def search():
 
 
 if __name__ == '__main__':
-    # all_games, all_tags, model = load_all_data()
-    all_games, all_tags = load_all_data()
+    all_games, all_tags, model = load_all_data()
+    # all_games, all_tags = load_all_data()
     all_games_df = pd.DataFrame(all_games)
 
     game_vocab = all_games_df['game_name'].unique()
