@@ -125,6 +125,15 @@ def get_metacritic_reviews(meta_link, user=True):
     )
     return response
 
+def wilson_confidence(ups, downs):
+    n = ups + downs
+
+    if n == 0:
+        return 0
+
+    z = 1.96 #1.44 = 85%, 1.96 = 95%
+    phat = float(ups) / n
+    return ((phat + z * z / ( 2 * n) - z * sqrt( (phat * ( 1 - phat) + z * z / (4 * n)) / n )) / ( 1 + z * z / n ))
 
 class Steam_Scraper(object):
 
@@ -366,6 +375,15 @@ class Steam_Scraper(object):
                 .sort([('total_user_reviews', -1), ('avg_user_reviews', -1)])
                 #.limit(1000)
                 )
+            for game in all_games:
+                pos = game['avg_user_reviews'] * game['total_user_reviews']
+                neg = (10 - game['avg_user_reviews']) * game['total_user_reviews']
+                game['confidence'] = round(wilson_confidence(pos / 10, neg / 10), 4)
+
+            all_games = sorted(all_games, 
+                key=itemgetter('confidence'), 
+                reverse=True)
+
         else:
             all_games = list(self.collection.find({'user_review': {'$exists': 'true'}, 
                             'total_user_reviews': {'$ne': 0},'game_name': game},
@@ -406,12 +424,17 @@ class Steam_Scraper(object):
             # get the game info about the game
             for game in all_games_in_tag:
                 game_data = self.limit_game_data(game=game)
-                tag_dict[tag_id].extend(game_data)
+                if game_data:
+                    game_data = game_data[0]
+                    pos = game_data['avg_user_reviews'] * game_data['total_user_reviews']
+                    neg = (10 - game_data['avg_user_reviews']) * game_data['total_user_reviews']
+                    game_data['confidence'] = round(wilson_confidence(pos / 10, neg / 10), 4)
+                    tag_dict[tag_id].append(game_data)
         
         # Sort the data based on total user views and average user reviews
         for tag, data in tag_dict.iteritems():
             tag_dict[tag] = sorted(data, 
-                                key=itemgetter('total_user_reviews', 'avg_user_reviews'), 
+                                key=itemgetter('confidence'), 
                                 reverse=True)
         # save all the steam tag data to pickle if needed
         if save_file:
