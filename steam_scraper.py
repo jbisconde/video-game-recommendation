@@ -12,6 +12,7 @@ import traceback
 import os
 import re
 import urllib
+import config # keys
 
 # Helper functions
 def send_post_request(game_url, game_url_2):
@@ -119,8 +120,8 @@ def get_metacritic_reviews(meta_link, user=True):
     game_url = mashape_url + meta_link.split('/')[-1]
     response = requests.get(game_url,
       headers={
-        "X-Mashape-Key": "h8QdBav6HZmshk9E8AoErg4L9EIqp1zKztVjsnFMz5bYpqC0iY",
-        "Accept": "application/json"
+        "X-Mashape-Key": config.key,
+        "Accept": config.app
       }, timeout=100
     )
     return response
