@@ -12,7 +12,7 @@ import traceback
 import os
 import re
 import urllib
-import config # keys
+import config
 
 # Helper functions
 def send_post_request(game_url, game_url_2):
@@ -107,10 +107,10 @@ def scrape_steam_data(game_url):
 
 
 def get_metacritic_reviews(meta_link, user=True):
-    base_url = "https://byroredux-metacritic.p.mashape.com/"
-    user_url = "user-reviews"
-    critic_url = "reviews"
-    end_url = "url=http%3A%2F%2Fwww.metacritic.com%2Fgame%2Fpc%2F"
+    base_url = config.base_url
+    user_url = config.user_url
+    critic_url = config.critic_url
+    end_url = config.end_url
     if user:
         mashape_url = base_url + user_url + "?page_count=5&" + end_url
     else:
@@ -166,12 +166,12 @@ class Steam_Scraper(object):
 
 
     def get_all_steam_game_data(self):
-        base_url = 'http://store.steampowered.com/search/results?sort_by=_ASC&page='
+        steam_url = config.steam_url
         total_pages = 489
 
         for i in xrange(1, total_pages + 1):
             page_url = None
-            page_url = base_url + str(i) #+ add_url
+            page_url = steam_url + str(i) #+ add_url
             content = requests.get(page_url).text
             # time.sleep(2)
             soup = BeautifulSoup(content, 'html.parser')
