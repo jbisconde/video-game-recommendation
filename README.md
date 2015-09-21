@@ -9,5 +9,5 @@ My Data Science Immersion Capstone Project uses the [Steam (Valve Corporation)](
 **Goal:**  
  * To use this prediction to make finding similar games easier and faster.
 
- **Link:**  
+**Link:**  
  * [TopG4ME](http://www.topgames4.me)
