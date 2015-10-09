@@ -16,6 +16,7 @@ import config
 
 # Helper functions
 def send_post_request(game_url, game_url_2):
+    """This function returns the soup object after sending the payload to game_url_2 and getting the data from game_url"""
     payload = {
         'ageDay': '1',
         'ageMonth': 'January',
@@ -37,6 +38,20 @@ def send_post_request(game_url, game_url_2):
 
 
 def parse_through_steam_soup(soup, game_url):
+    """
+    Parameters
+    ----------
+    soup : html object
+    game_url : str
+    
+    Returns
+    ----------
+    game_desc : str
+        Description of the game
+    game_tags : list
+        Game Tags of the game
+    soup : html object
+    """
     # Get the game description
     game_desc = " ".join([line.text.strip() for line in soup.select('div.game_area_description')])
 
